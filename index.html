@@ -1,3 +1,14 @@
+That redundancy is a great catch. The top buttons ("Load High-Protein Day" / "Load Cycling Day") were initially meant as shortcut presets to populate sample meals, but they overlap confusingly with the actual "Activity Mode & Targets" buttons (Rest, Weights/Padel, Cycling) down below.
+
+To solve both issues—eliminating that confusion and building in a dynamic questionnaire for future-proofing and self-learning—we can transform the app:
+
+1. **Clarify the UI:** Remove the top redundant template buttons from the header. Keep the core logic clean: the "Activity Mode & Targets" buttons set your macro goals, and your meal slots are yours to build or template.
+2. **Add an Onboarding Questionnaire & Profile Builder:** Introduce a setup modal/view where the user inputs their goals, favorite proteins/foods, and default splits directly.
+3. **Adaptive Learning:** The quick-add library and meal generator will adapt to what you log and favorite over time, storing your custom preferences in local storage so the app evolves with you.
+
+Here is the complete, clean code incorporating the questionnaire onboarding, customizable preference learning, and streamlined targets:
+
+```html
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -25,12 +36,60 @@
         <h1 class="text-lg font-bold tracking-tight">FoodMove</h1>
       </div>
       <div class="flex items-center gap-2">
-        <button onclick="loadSampleDay('base')" class="text-xs bg-slate-800 hover:bg-slate-700 text-emerald-400 border border-slate-700 px-3 py-1.5 rounded-lg font-medium transition">Load High-Protein Day</button>
-        <button onclick="loadSampleDay('ride')" class="text-xs bg-slate-800 hover:bg-slate-700 text-sky-400 border border-slate-700 px-3 py-1.5 rounded-lg font-medium transition">Load Cycling Day</button>
-        <button onclick="resetDay()" class="text-xs bg-rose-950/60 hover:bg-rose-900/80 text-rose-300 border border-rose-800/60 px-3 py-1.5 rounded-lg font-medium transition">Reset</button>
+        <button onclick="openQuestionnaire()" class="text-xs bg-slate-800 hover:bg-slate-700 text-emerald-400 border border-slate-700 px-3 py-1.5 rounded-lg font-medium transition">⚙️ Preferences & Questionnaire</button>
+        <button onclick="resetDay()" class="text-xs bg-rose-950/60 hover:bg-rose-900/80 text-rose-300 border border-rose-800/60 px-3 py-1.5 rounded-lg font-medium transition">Reset Day</button>
       </div>
     </div>
   </header>
+
+  <!-- Questionnaire / Onboarding Modal -->
+  <div id="quest-modal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+    <div class="card p-6 max-w-lg w-full max-h-[90vh] overflow-y-auto space-y-4 border border-emerald-500/40">
+      <div class="flex justify-between items-center">
+        <h2 class="text-base font-bold text-emerald-400">FoodMove Profile Questionnaire</h2>
+        <button onclick="closeQuestionnaire()" class="text-slate-400 hover:text-white text-sm">✕</button>
+      </div>
+      <p class="text-xs text-slate-300">Configure your baseline targets and favored food types so the app learns your preferences directly.</p>
+      
+      <div class="space-y-3 pt-2">
+        <div>
+          <label class="text-xs font-semibold text-slate-300 block mb-1">Primary Dietary Style</label>
+          <select id="q-diet" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white">
+            <option value="pescatarian">Pescatarian (High Protein / Fish & Eggs)</option>
+            <option value="vegetarian">Vegetarian</option>
+            <option value="flexible">Flexible / Omnivore</option>
+          </select>
+        </div>
+
+        <div>
+          <label class="text-xs font-semibold text-slate-300 block mb-1">Default Activity / Training Focus</label>
+          <select id="q-focus" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white">
+            <option value="weights">Weights & Padel (Balanced High Protein)</option>
+            <option value="cycling">Cycling & Endurance (High Carb / Fuel Focus)</option>
+            <option value="rest">Rest & Recovery (Base Calories)</option>
+          </select>
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="text-xs font-semibold text-slate-300 block mb-1">Target Protein (g)</label>
+            <input id="q-pro" type="number" value="185" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white" />
+          </div>
+          <div>
+            <label class="text-xs font-semibold text-slate-300 block mb-1">Target Calories (kcal)</label>
+            <input id="q-cal" type="number" value="2350" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white" />
+          </div>
+        </div>
+
+        <div>
+          <label class="text-xs font-semibold text-slate-300 block mb-1">Favorite Staple Foods (Comma separated)</label>
+          <input id="q-staples" type="text" value="Greek Yogurt, Whey Isolate, Salmon, Oats, Basmati Rice, Quorn" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white" />
+        </div>
+      </div>
+
+      <button onclick="saveQuestionnaire()" class="w-full bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs py-2.5 rounded-lg transition mt-2">Save Profile & Learn Preferences</button>
+    </div>
+  </div>
 
   <main class="max-w-6xl mx-auto px-4 pt-5 grid grid-cols-1 lg:grid-cols-12 gap-6">
     <!-- Left Column: Targets & Live Dashboard -->
@@ -168,26 +227,26 @@
     };
 
     const DEFAULT_FOODS = [
-      { id: 'f1', name: '0% Greek Yogurt', grams: 200, cal: 114, pro: 20.6, carb: 7.6, fat: 0.2 },
-      { id: 'f2', name: 'Whey Protein Isolate (1 Scoop)', grams: 30, cal: 116, pro: 25, carb: 1.5, fat: 1.0 },
-      { id: 'f3', name: 'Large Whole Eggs (2 Eggs)', grams: 120, cal: 156, pro: 12.6, carb: 0.8, fat: 10.6 },
-      { id: 'f4', name: 'Scottish Salmon Fillet (Cooked)', grams: 150, cal: 312, pro: 33, carb: 0, fat: 19.5 },
-      { id: 'f5', name: 'Tuna Steak or Tin in Spring Water (Drained)', grams: 120, cal: 132, pro: 29, carb: 0, fat: 1.2 },
-      { id: 'f6', name: 'King Prawns (Cooked)', grams: 150, cal: 148, pro: 34, carb: 0, fat: 1.4 },
-      { id: 'f7', name: 'Cod / White Fish Fillet', grams: 180, cal: 154, pro: 36, carb: 0, fat: 1.2 },
-      { id: 'f8', name: 'Quorn Pieces', grams: 150, cal: 149, pro: 21.8, carb: 2.7, fat: 3.9 },
-      { id: 'f9', name: 'Quorn Mince', grams: 150, cal: 158, pro: 21.8, carb: 6.8, fat: 3.0 },
-      { id: 'f10', name: 'Quorn Sausages (2 Sausages)', grams: 84, cal: 146, pro: 11.8, carb: 9.2, fat: 6.2 },
-      { id: 'f11', name: 'Rolled Porridge Oats', grams: 60, cal: 224, pro: 6.6, carb: 36, fat: 4.8 },
-      { id: 'f12', name: 'Sourdough Toast (2 Slices)', grams: 90, cal: 230, pro: 8.5, carb: 45, fat: 1.4 },
-      { id: 'f13', name: 'Basmati Rice (Cooked)', grams: 180, cal: 234, pro: 5.4, carb: 50.4, fat: 0.9 },
-      { id: 'f14', name: 'Sweet Potato (Baked)', grams: 200, cal: 172, pro: 3.2, carb: 40, fat: 0.2 },
-      { id: 'f15', name: 'Banana (Medium)', grams: 118, cal: 105, pro: 1.3, carb: 27, fat: 0.4 },
-      { id: 'f16', name: 'Mixed Berries', grams: 100, cal: 50, pro: 1.0, carb: 11, fat: 0.3 },
-      { id: 'f17', name: 'Avocado (Half)', grams: 75, cal: 120, pro: 1.5, carb: 6, fat: 11 },
-      { id: 'f18', name: 'Natural Peanut Butter (1 Tbsp)', grams: 16, cal: 94, pro: 4.0, carb: 3.2, fat: 8.0 },
-      { id: 'f19', name: 'Extra Virgin Olive Oil (1 Tbsp)', grams: 10, cal: 88, pro: 0, carb: 0, fat: 10 },
-      { id: 'f20', name: 'Isotonic Energy Gel / Ride Carbs', grams: 60, cal: 90, pro: 0, carb: 22, fat: 0 }
+      { id: 'f1', name: '0% Greek Yogurt', grams: 200, cal: 114, pro: 20.6, carb: 7.6, fat: 0.2, count: 0 },
+      { id: 'f2', name: 'Whey Protein Isolate (1 Scoop)', grams: 30, cal: 116, pro: 25, carb: 1.5, fat: 1.0, count: 0 },
+      { id: 'f3', name: 'Large Whole Eggs (2 Eggs)', grams: 120, cal: 156, pro: 12.6, carb: 0.8, fat: 10.6, count: 0 },
+      { id: 'f4', name: 'Scottish Salmon Fillet (Cooked)', grams: 150, cal: 312, pro: 33, carb: 0, fat: 19.5, count: 0 },
+      { id: 'f5', name: 'Tuna Steak or Tin in Spring Water (Drained)', grams: 120, cal: 132, pro: 29, carb: 0, fat: 1.2, count: 0 },
+      { id: 'f6', name: 'King Prawns (Cooked)', grams: 150, cal: 148, pro: 34, carb: 0, fat: 1.4, count: 0 },
+      { id: 'f7', name: 'Cod / White Fish Fillet', grams: 180, cal: 154, pro: 36, carb: 0, fat: 1.2, count: 0 },
+      { id: 'f8', name: 'Quorn Pieces', grams: 150, cal: 149, pro: 21.8, carb: 2.7, fat: 3.9, count: 0 },
+      { id: 'f9', name: 'Quorn Mince', grams: 150, cal: 158, pro: 21.8, carb: 6.8, fat: 3.0, count: 0 },
+      { id: 'f10', name: 'Quorn Sausages (2 Sausages)', grams: 84, cal: 146, pro: 11.8, carb: 9.2, fat: 6.2, count: 0 },
+      { id: 'f11', name: 'Rolled Porridge Oats', grams: 60, cal: 224, pro: 6.6, carb: 36, fat: 4.8, count: 0 },
+      { id: 'f12', name: 'Sourdough Toast (2 Slices)', grams: 90, cal: 230, pro: 8.5, carb: 45, fat: 1.4, count: 0 },
+      { id: 'f13', name: 'Basmati Rice (Cooked)', grams: 180, cal: 234, pro: 5.4, carb: 50.4, fat: 0.9, count: 0 },
+      { id: 'f14', name: 'Sweet Potato (Baked)', grams: 200, cal: 172, pro: 3.2, carb: 40, fat: 0.2, count: 0 },
+      { id: 'f15', name: 'Banana (Medium)', grams: 118, cal: 105, pro: 1.3, carb: 27, fat: 0.4, count: 0 },
+      { id: 'f16', name: 'Mixed Berries', grams: 100, cal: 50, pro: 1.0, carb: 11, fat: 0.3, count: 0 },
+      { id: 'f17', name: 'Avocado (Half)', grams: 75, cal: 120, pro: 1.5, carb: 6, fat: 11, count: 0 },
+      { id: 'f18', name: 'Natural Peanut Butter (1 Tbsp)', grams: 16, cal: 94, pro: 4.0, carb: 3.2, fat: 8.0, count: 0 },
+      { id: 'f19', name: 'Extra Virgin Olive Oil (1 Tbsp)', grams: 10, cal: 88, pro: 0, carb: 0, fat: 10, count: 0 },
+      { id: 'f20', name: 'Isotonic Energy Gel / Ride Carbs', grams: 60, cal: 90, pro: 0, carb: 22, fat: 0, count: 0 }
     ];
 
     const SLOTS = [
@@ -197,16 +256,38 @@
       { key: 'snacks', title: 'Snacks / Post-Workout' }
     ];
 
-    let state = JSON.parse(localStorage.getItem('foodmove_v1')) || {
+    let state = JSON.parse(localStorage.getItem('foodmove_v2')) || {
       preset: 'weights',
       targets: { ...PRESETS.weights },
       foods: DEFAULT_FOODS,
-      meals: { breakfast: [], lunch: [], dinner: [], snacks: [] }
+      meals: { breakfast: [], lunch: [], dinner: [], snacks: [] },
+      profile: { diet: 'pescatarian', focus: 'weights' }
     };
 
     function saveState() {
-      localStorage.setItem('foodmove_v1', JSON.stringify(state));
+      localStorage.setItem('foodmove_v2', JSON.stringify(state));
       renderAll();
+    }
+
+    function openQuestionnaire() {
+      document.getElementById('q-pro').value = state.targets.pro;
+      document.getElementById('q-cal').value = state.targets.cal;
+      document.getElementById('quest-modal').classList.remove('hidden');
+    }
+
+    function closeQuestionnaire() {
+      document.getElementById('quest-modal').classList.add('hidden');
+    }
+
+    function saveQuestionnaire() {
+      const pro = Number(document.getElementById('q-pro').value) || 185;
+      const cal = Number(document.getElementById('q-cal').value) || 2350;
+      state.profile.diet = document.getElementById('q-diet').value;
+      state.profile.focus = document.getElementById('q-focus').value;
+      state.targets.pro = pro;
+      state.targets.cal = cal;
+      closeQuestionnaire();
+      saveState();
     }
 
     function setPreset(key) {
@@ -234,6 +315,7 @@
       const targetSlot = slotKey || document.getElementById('active-slot').value;
       const food = state.foods.find(f => f.id === foodId);
       if (!food) return;
+      food.count = (food.count || 0) + 1; // Learn frequency
       state.meals[targetSlot].push({
         uid: Date.now() + Math.random(),
         foodId: food.id,
@@ -278,43 +360,9 @@
       const fat = Number(document.getElementById('cust-fat').value) || 0;
       if (!name) return;
       const id = 'cust_' + Date.now();
-      state.foods.unshift({ id, name, grams, cal, pro, carb, fat });
+      state.foods.unshift({ id, name, grams, cal, pro, carb, fat, count: 1 });
       document.getElementById('cust-name').value = '';
       addFoodToSlot(id);
-    }
-
-    function loadSampleDay(type) {
-      if (type === 'base') {
-        setPreset('weights');
-        state.meals = { breakfast: [], lunch: [], dinner: [], snacks: [] };
-        addFoodToSlot('f1', 'breakfast');
-        addFoodToSlot('f2', 'breakfast');
-        addFoodToSlot('f11', 'breakfast');
-        addFoodToSlot('f16', 'breakfast');
-        addFoodToSlot('f5', 'lunch');
-        addFoodToSlot('f3', 'lunch');
-        addFoodToSlot('f12', 'lunch');
-        addFoodToSlot('f17', 'lunch');
-        addFoodToSlot('f4', 'dinner');
-        addFoodToSlot('f13', 'dinner');
-        addFoodToSlot('f8', 'snacks');
-        addFoodToSlot('f18', 'snacks');
-      } else {
-        setPreset('cycling');
-        state.meals = { breakfast: [], lunch: [], dinner: [], snacks: [] };
-        addFoodToSlot('f11', 'breakfast');
-        addFoodToSlot('f2', 'breakfast');
-        addFoodToSlot('f15', 'breakfast');
-        addFoodToSlot('f5', 'lunch');
-        addFoodToSlot('f12', 'lunch');
-        addFoodToSlot('f3', 'lunch');
-        addFoodToSlot('f4', 'dinner');
-        addFoodToSlot('f13', 'dinner');
-        addFoodToSlot('f14', 'dinner');
-        addFoodToSlot('f1', 'snacks');
-        addFoodToSlot('f20', 'snacks');
-      }
-      saveState();
     }
 
     function resetDay() {
@@ -325,7 +373,11 @@
     function renderFoodLibrary() {
       const q = (document.getElementById('food-search').value || '').toLowerCase();
       const lib = document.getElementById('food-library');
-      lib.innerHTML = state.foods
+      
+      // Sort library dynamically: items used more often bubble to the top (adaptive learning)
+      const sortedFoods = [...state.foods].sort((a, b) => (b.count || 0) - (a.count || 0));
+
+      lib.innerHTML = sortedFoods
         .filter(f => f.name.toLowerCase().includes(q))
         .map(f => `
           <div class="flex items-center justify-between bg-slate-900/90 border border-slate-800 rounded-lg px-3 py-2">
@@ -437,3 +489,5 @@
   </script>
 </body>
 </html>
+
+```
