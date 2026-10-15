@@ -1,0 +1,429 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta name="theme-color" content="#0f172a" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <title>MacroPulse | Daily Meal & Macro Calculator</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body { background-color: #0f172a; color: #f8fafc; font-family: system-ui, -apple-system, sans-serif; -webkit-tap-highlight-color: transparent; }
+    .card { background: #1e293b; border: 1px solid #334155; border-radius: 1rem; }
+    input[type="number"]::-webkit-inner-spin-button { opacity: 1; }
+  </style>
+</head>
+<body class="min-h-screen pb-12">
+  <header class="bg-slate-900/90 backdrop-blur border-b border-slate-800 sticky top-0 z-30 px-4 py-3">
+    <div class="max-w-6xl mx-auto flex flex-wrap items-center justify-between gap-2">
+      <div class="flex items-center gap-2">
+        <div class="w-8 h-8 rounded-lg bg-emerald-500 flex items-center justify-center font-bold text-slate-950">M</div>
+        <h1 class="text-lg font-bold tracking-tight">MacroPulse</h1>
+      </div>
+      <div class="flex items-center gap-2">
+        <button onclick="loadSampleDay('base')" class="text-xs bg-slate-800 hover:bg-slate-700 text-emerald-400 border border-slate-700 px-3 py-1.5 rounded-lg font-medium transition">Load High-Protein Day</button>
+        <button onclick="loadSampleDay('ride')" class="text-xs bg-slate-800 hover:bg-slate-700 text-sky-400 border border-slate-700 px-3 py-1.5 rounded-lg font-medium transition">Load Cycling Day</button>
+        <button onclick="resetDay()" class="text-xs bg-rose-950/60 hover:bg-rose-900/80 text-rose-300 border border-rose-800/60 px-3 py-1.5 rounded-lg font-medium transition">Reset</button>
+      </div>
+    </div>
+  </header>
+
+  <main class="max-w-6xl mx-auto px-4 pt-5 grid grid-cols-1 lg:grid-cols-12 gap-6">
+    <div class="lg:col-span-5 space-y-5">
+      <section class="card p-4">
+        <div class="flex items-center justify-between mb-3">
+          <h2 class="text-sm font-semibold uppercase tracking-wider text-slate-400">1. Activity Mode & Targets</h2>
+          <button onclick="syncCaloriesFromMacros()" class="text-xs text-emerald-400 hover:underline">Auto-calc kcal</button>
+        </div>
+        <div class="grid grid-cols-3 gap-2 mb-4">
+          <button onclick="setPreset('rest')" id="preset-rest" class="preset-btn text-xs py-2 px-2 rounded-lg border border-slate-700 bg-slate-800/60 font-medium text-center">Rest / Base</button>
+          <button onclick="setPreset('weights')" id="preset-weights" class="preset-btn text-xs py-2 px-2 rounded-lg border border-emerald-500 bg-emerald-500/10 text-emerald-300 font-medium text-center">Weights / Padel</button>
+          <button onclick="setPreset('cycling')" id="preset-cycling" class="preset-btn text-xs py-2 px-2 rounded-lg border border-slate-700 bg-slate-800/60 font-medium text-center">Cycling / Endurance</button>
+        </div>
+        <div class="grid grid-cols-4 gap-2">
+          <div>
+            <label class="text-[11px] text-slate-400 block mb-1">Calories</label>
+            <input id="target-cal" type="number" oninput="updateTargets()" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-1.5 text-sm font-semibold text-white" />
+          </div>
+          <div>
+            <label class="text-[11px] text-emerald-400 block mb-1">Protein (g)</label>
+            <input id="target-pro" type="number" oninput="updateTargets(true)" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-1.5 text-sm font-semibold text-emerald-400" />
+          </div>
+          <div>
+            <label class="text-[11px] text-sky-400 block mb-1">Carbs (g)</label>
+            <input id="target-carb" type="number" oninput="updateTargets(true)" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-1.5 text-sm font-semibold text-sky-400" />
+          </div>
+          <div>
+            <label class="text-[11px] text-amber-400 block mb-1">Fat (g)</label>
+            <input id="target-fat" type="number" oninput="updateTargets(true)" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-1.5 text-sm font-semibold text-amber-400" />
+          </div>
+        </div>
+      </section>
+
+      <section class="card p-5">
+        <div class="flex items-center justify-between mb-4">
+          <div>
+            <span class="text-xs uppercase tracking-wider text-slate-400 font-semibold">Daily Progress</span>
+            <div class="flex items-baseline gap-2 mt-0.5">
+              <span id="tot-cal" class="text-3xl font-extrabold">0</span>
+              <span class="text-sm text-slate-400">/ <span id="lbl-target-cal">2350</span> kcal</span>
+            </div>
+          </div>
+          <div class="text-right">
+            <span id="rem-cal-badge" class="inline-block px-3 py-1 rounded-full text-xs font-semibold bg-slate-800 text-slate-200">2350 kcal left</span>
+          </div>
+        </div>
+
+        <div class="w-full h-3 bg-slate-900 rounded-full overflow-hidden mb-5 border border-slate-800">
+          <div id="bar-cal" class="h-full bg-gradient-to-r from-emerald-500 to-sky-500 transition-all duration-300" style="width: 0%"></div>
+        </div>
+
+        <div class="space-y-3.5">
+          <div>
+            <div class="flex justify-between text-xs mb-1">
+              <span class="font-semibold text-emerald-400">Protein</span>
+              <span><strong id="tot-pro">0</strong>g / <span id="lbl-target-pro">185</span>g <span id="rem-pro" class="text-slate-400 ml-1">(185g left)</span></span>
+            </div>
+            <div class="w-full h-2.5 bg-slate-900 rounded-full overflow-hidden">
+              <div id="bar-pro" class="h-full bg-emerald-500 transition-all duration-300" style="width: 0%"></div>
+            </div>
+          </div>
+
+          <div>
+            <div class="flex justify-between text-xs mb-1">
+              <span class="font-semibold text-sky-400">Carbohydrates</span>
+              <span><strong id="tot-carb">0</strong>g / <span id="lbl-target-carb">230</span>g <span id="rem-carb" class="text-slate-400 ml-1">(230g left)</span></span>
+            </div>
+            <div class="w-full h-2.5 bg-slate-900 rounded-full overflow-hidden">
+              <div id="bar-carb" class="h-full bg-sky-500 transition-all duration-300" style="width: 0%"></div>
+            </div>
+          </div>
+
+          <div>
+            <div class="flex justify-between text-xs mb-1">
+              <span class="font-semibold text-amber-400">Fats</span>
+              <span><strong id="tot-fat">0</strong>g / <span id="lbl-target-fat">75</span>g <span id="rem-fat" class="text-slate-400 ml-1">(75g left)</span></span>
+            </div>
+            <div class="w-full h-2.5 bg-slate-900 rounded-full overflow-hidden">
+              <div id="bar-fat" class="h-full bg-amber-500 transition-all duration-300" style="width: 0%"></div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="card p-4">
+        <div class="flex items-center justify-between mb-3">
+          <h2 class="text-sm font-semibold uppercase tracking-wider text-slate-400">2. Quick-Add Food Library</h2>
+          <select id="active-slot" class="bg-slate-900 border border-emerald-500/60 text-emerald-300 text-xs rounded-lg px-2.5 py-1.5 font-semibold">
+            <option value="breakfast">Add to: Breakfast</option>
+            <option value="lunch">Add to: Lunch</option>
+            <option value="dinner">Add to: Dinner</option>
+            <option value="snacks">Add to: Snacks / Fuel</option>
+          </select>
+        </div>
+
+        <input id="food-search" type="text" oninput="renderFoodLibrary()" placeholder="Search fish, eggs, Quorn, yogurt, oats..." class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-xs mb-3 text-white placeholder-slate-500" />
+
+        <div id="food-library" class="max-h-72 overflow-y-auto space-y-1.5 pr-1"></div>
+
+        <details class="mt-4 border-t border-slate-800 pt-3">
+          <summary class="text-xs font-semibold text-emerald-400 cursor-pointer">+ Create Custom Food Item</summary>
+          <div class="mt-3 space-y-2">
+            <div class="grid grid-cols-2 gap-2">
+              <input id="cust-name" type="text" placeholder="Food Name" class="bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs" />
+              <input id="cust-grams" type="number" placeholder="Serving size (g)" value="100" class="bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs" />
+            </div>
+            <div class="grid grid-cols-4 gap-2">
+              <input id="cust-cal" type="number" placeholder="kcal" class="bg-slate-900 border border-slate-700 rounded-lg px-2 py-1.5 text-xs" />
+              <input id="cust-pro" type="number" placeholder="Pro (g)" class="bg-slate-900 border border-slate-700 rounded-lg px-2 py-1.5 text-xs" />
+              <input id="cust-carb" type="number" placeholder="Carb (g)" class="bg-slate-900 border border-slate-700 rounded-lg px-2 py-1.5 text-xs" />
+              <input id="cust-fat" type="number" placeholder="Fat (g)" class="bg-slate-900 border border-slate-700 rounded-lg px-2 py-1.5 text-xs" />
+            </div>
+            <button onclick="addCustomFood()" class="w-full bg-emerald-600 hover:bg-emerald-500 text-slate-950 font-semibold text-xs py-2 rounded-lg transition">Save & Add to Meal</button>
+          </div>
+        </details>
+      </section>
+    </div>
+
+    <div class="lg:col-span-7 space-y-4" id="meals-container"></div>
+  </main>
+
+  <script>
+    const PRESETS = {
+      rest: { cal: 2050, pro: 175, carb: 175, fat: 72 },
+      weights: { cal: 2350, pro: 185, carb: 230, fat: 75 },
+      cycling: { cal: 2850, pro: 185, carb: 345, fat: 80 }
+    };
+
+    const DEFAULT_FOODS = [
+      { id: 'f1', name: '0% Greek Yogurt', grams: 200, cal: 114, pro: 20.6, carb: 7.6, fat: 0.2 },
+      { id: 'f2', name: 'Whey Protein Isolate (1 Scoop)', grams: 30, cal: 116, pro: 25, carb: 1.5, fat: 1.0 },
+      { id: 'f3', name: 'Large Whole Eggs (2 Eggs)', grams: 120, cal: 156, pro: 12.6, carb: 0.8, fat: 10.6 },
+      { id: 'f4', name: 'Scottish Salmon Fillet (Cooked)', grams: 150, cal: 312, pro: 33, carb: 0, fat: 19.5 },
+      { id: 'f5', name: 'Tuna Steak or Tin in Spring Water (Drained)', grams: 120, cal: 132, pro: 29, carb: 0, fat: 1.2 },
+      { id: 'f6', name: 'King Prawns (Cooked)', grams: 150, cal: 148, pro: 34, carb: 0, fat: 1.4 },
+      { id: 'f7', name: 'Cod / White Fish Fillet', grams: 180, cal: 154, pro: 36, carb: 0, fat: 1.2 },
+      { id: 'f8', name: 'Quorn Pieces', grams: 150, cal: 149, pro: 21.8, carb: 2.7, fat: 3.9 },
+      { id: 'f9', name: 'Quorn Mince', grams: 150, cal: 158, pro: 21.8, carb: 6.8, fat: 3.0 },
+      { id: 'f10', name: 'Quorn Sausages (2 Sausages)', grams: 84, cal: 146, pro: 11.8, carb: 9.2, fat: 6.2 },
+      { id: 'f11', name: 'Rolled Porridge Oats', grams: 60, cal: 224, pro: 6.6, carb: 36, fat: 4.8 },
+      { id: 'f12', name: 'Sourdough Toast (2 Slices)', grams: 90, cal: 230, pro: 8.5, carb: 45, fat: 1.4 },
+      { id: 'f13', name: 'Basmati Rice (Cooked)', grams: 180, cal: 234, pro: 5.4, carb: 50.4, fat: 0.9 },
+      { id: 'f14', name: 'Sweet Potato (Baked)', grams: 200, cal: 172, pro: 3.2, carb: 40, fat: 0.2 },
+      { id: 'f15', name: 'Banana (Medium)', grams: 118, cal: 105, pro: 1.3, carb: 27, fat: 0.4 },
+      { id: 'f16', name: 'Mixed Berries', grams: 100, cal: 50, pro: 1.0, carb: 11, fat: 0.3 },
+      { id: 'f17', name: 'Avocado (Half)', grams: 75, cal: 120, pro: 1.5, carb: 6, fat: 11 },
+      { id: 'f18', name: 'Natural Peanut Butter (1 Tbsp)', grams: 16, cal: 94, pro: 4.0, carb: 3.2, fat: 8.0 },
+      { id: 'f19', name: 'Extra Virgin Olive Oil (1 Tbsp)', grams: 10, cal: 88, pro: 0, carb: 0, fat: 10 },
+      { id: 'f20', name: 'Isotonic Energy Gel / Ride Carbs', grams: 60, cal: 90, pro: 0, carb: 22, fat: 0 }
+    ];
+
+    const SLOTS = [
+      { key: 'breakfast', title: 'Breakfast' },
+      { key: 'lunch', title: 'Lunch' },
+      { key: 'dinner', title: 'Dinner' },
+      { key: 'snacks', title: 'Snacks / Post-Workout' }
+    ];
+
+    let state = JSON.parse(localStorage.getItem('macropulse_v1')) || {
+      preset: 'weights',
+      targets: { ...PRESETS.weights },
+      foods: DEFAULT_FOODS,
+      meals: { breakfast: [], lunch: [], dinner: [], snacks: [] }
+    };
+
+    function saveState() {
+      localStorage.setItem('macropulse_v1', JSON.stringify(state));
+      renderAll();
+    }
+
+    function setPreset(key) {
+      state.preset = key;
+      state.targets = { ...PRESETS[key] };
+      saveState();
+    }
+
+    function updateTargets(autoSync = false) {
+      const pro = Number(document.getElementById('target-pro').value) || 0;
+      const carb = Number(document.getElementById('target-carb').value) || 0;
+      const fat = Number(document.getElementById('target-fat').value) || 0;
+      let cal = Number(document.getElementById('target-cal').value) || 0;
+      if (autoSync) cal = Math.round(pro * 4 + carb * 4 + fat * 9);
+      state.targets = { cal, pro, carb, fat };
+      state.preset = 'custom';
+      saveState();
+    }
+
+    function syncCaloriesFromMacros() {
+      updateTargets(true);
+    }
+
+    function addFoodToSlot(foodId, slotKey = null) {
+      const targetSlot = slotKey || document.getElementById('active-slot').value;
+      const food = state.foods.find(f => f.id === foodId);
+      if (!food) return;
+      state.meals[targetSlot].push({
+        uid: Date.now() + Math.random(),
+        foodId: food.id,
+        name: food.name,
+        baseGrams: food.grams,
+        grams: food.grams,
+        baseCal: food.cal,
+        basePro: food.pro,
+        baseCarb: food.carb,
+        baseFat: food.fat
+      });
+      saveState();
+    }
+
+    function updateItemGrams(slotKey, uid, newGrams) {
+      const item = state.meals[slotKey].find(i => i.uid === uid);
+      if (item) {
+        item.grams = Math.max(0, Number(newGrams) || 0);
+        saveState();
+      }
+    }
+
+    function scaleItem(slotKey, uid, mult) {
+      const item = state.meals[slotKey].find(i => i.uid === uid);
+      if (item) {
+        item.grams = Math.round(item.baseGrams * mult);
+        saveState();
+      }
+    }
+
+    function removeItem(slotKey, uid) {
+      state.meals[slotKey] = state.meals[slotKey].filter(i => i.uid !== uid);
+      saveState();
+    }
+
+    function addCustomFood() {
+      const name = document.getElementById('cust-name').value.trim();
+      const grams = Number(document.getElementById('cust-grams').value) || 100;
+      const cal = Number(document.getElementById('cust-cal').value) || 0;
+      const pro = Number(document.getElementById('cust-pro').value) || 0;
+      const carb = Number(document.getElementById('cust-carb').value) || 0;
+      const fat = Number(document.getElementById('cust-fat').value) || 0;
+      if (!name) return;
+      const id = 'cust_' + Date.now();
+      state.foods.unshift({ id, name, grams, cal, pro, carb, fat });
+      document.getElementById('cust-name').value = '';
+      addFoodToSlot(id);
+    }
+
+    function loadSampleDay(type) {
+      if (type === 'base') {
+        setPreset('weights');
+        state.meals = { breakfast: [], lunch: [], dinner: [], snacks: [] };
+        addFoodToSlot('f1', 'breakfast');
+        addFoodToSlot('f2', 'breakfast');
+        addFoodToSlot('f11', 'breakfast');
+        addFoodToSlot('f16', 'breakfast');
+        addFoodToSlot('f5', 'lunch');
+        addFoodToSlot('f3', 'lunch');
+        addFoodToSlot('f12', 'lunch');
+        addFoodToSlot('f17', 'lunch');
+        addFoodToSlot('f4', 'dinner');
+        addFoodToSlot('f13', 'dinner');
+        addFoodToSlot('f8', 'snacks');
+        addFoodToSlot('f18', 'snacks');
+      } else {
+        setPreset('cycling');
+        state.meals = { breakfast: [], lunch: [], dinner: [], snacks: [] };
+        addFoodToSlot('f11', 'breakfast');
+        addFoodToSlot('f2', 'breakfast');
+        addFoodToSlot('f15', 'breakfast');
+        addFoodToSlot('f5', 'lunch');
+        addFoodToSlot('f12', 'lunch');
+        addFoodToSlot('f3', 'lunch');
+        addFoodToSlot('f4', 'dinner');
+        addFoodToSlot('f13', 'dinner');
+        addFoodToSlot('f14', 'dinner');
+        addFoodToSlot('f1', 'snacks');
+        addFoodToSlot('f20', 'snacks');
+      }
+      saveState();
+    }
+
+    function resetDay() {
+      state.meals = { breakfast: [], lunch: [], dinner: [], snacks: [] };
+      saveState();
+    }
+
+    function renderFoodLibrary() {
+      const q = (document.getElementById('food-search').value || '').toLowerCase();
+      const lib = document.getElementById('food-library');
+      lib.innerHTML = state.foods
+        .filter(f => f.name.toLowerCase().includes(q))
+        .map(f => `
+          <div class="flex items-center justify-between bg-slate-900/90 border border-slate-800 rounded-lg px-3 py-2">
+            <div>
+              <div class="text-xs font-semibold text-slate-100">${f.name} <span class="text-slate-400 font-normal">(${f.grams}g)</span></div>
+              <div class="text-[11px] text-slate-400">${f.cal} kcal • <span class="text-emerald-400">${f.pro}P</span> • <span class="text-sky-400">${f.carb}C</span> • <span class="text-amber-400">${f.fat}F</span></div>
+            </div>
+            <button onclick="addFoodToSlot('${f.id}')" class="bg-emerald-500/20 hover:bg-emerald-500 text-emerald-300 hover:text-slate-950 font-bold text-xs px-2.5 py-1.5 rounded-lg transition">+ Add</button>
+          </div>
+        `).join('');
+    }
+
+    function renderAll() {
+      document.getElementById('target-cal').value = state.targets.cal;
+      document.getElementById('target-pro').value = state.targets.pro;
+      document.getElementById('target-carb').value = state.targets.carb;
+      document.getElementById('target-fat').value = state.targets.fat;
+
+      ['rest', 'weights', 'cycling'].forEach(k => {
+        const btn = document.getElementById('preset-' + k);
+        if (state.preset === k) {
+          btn.className = 'preset-btn text-xs py-2 px-2 rounded-lg border border-emerald-500 bg-emerald-500/15 text-emerald-300 font-semibold text-center';
+        } else {
+          btn.className = 'preset-btn text-xs py-2 px-2 rounded-lg border border-slate-700 bg-slate-800/60 text-slate-300 font-medium text-center';
+        }
+      });
+
+      let totCal = 0, totPro = 0, totCarb = 0, totFat = 0;
+
+      const mealsHtml = SLOTS.map(slot => {
+        const items = state.meals[slot.key] || [];
+        let sCal = 0, sPro = 0, sCarb = 0, sFat = 0;
+
+        const rows = items.map(item => {
+          const ratio = item.grams / (item.baseGrams || 100);
+          const c = Math.round(item.baseCal * ratio);
+          const p = +(item.basePro * ratio).toFixed(1);
+          const cb = +(item.baseCarb * ratio).toFixed(1);
+          const f = +(item.baseFat * ratio).toFixed(1);
+          sCal += c; sPro += p; sCarb += cb; sFat += f;
+
+          return `
+            <div class="bg-slate-900/80 border border-slate-800 rounded-lg p-2.5 flex flex-wrap items-center justify-between gap-2">
+              <div class="min-w-[160px] flex-1">
+                <div class="text-xs font-semibold">${item.name}</div>
+                <div class="text-[11px] text-slate-400">${c} kcal • <span class="text-emerald-400">${p}g P</span> • <span class="text-sky-400">${cb}g C</span> • <span class="text-amber-400">${f}g F</span></div>
+              </div>
+              <div class="flex items-center gap-1.5">
+                <button onclick="scaleItem('${slot.key}', ${item.uid}, 0.5)" class="text-[10px] bg-slate-800 px-1.5 py-1 rounded hover:bg-slate-700">0.5x</button>
+                <button onclick="scaleItem('${slot.key}', ${item.uid}, 1)" class="text-[10px] bg-slate-800 px-1.5 py-1 rounded hover:bg-slate-700">1x</button>
+                <button onclick="scaleItem('${slot.key}', ${item.uid}, 1.5)" class="text-[10px] bg-slate-800 px-1.5 py-1 rounded hover:bg-slate-700">1.5x</button>
+                <input type="number" value="${item.grams}" onchange="updateItemGrams('${slot.key}', ${item.uid}, this.value)" class="w-16 bg-slate-950 border border-slate-700 rounded px-1.5 py-1 text-xs text-right" />
+                <span class="text-[11px] text-slate-400">g</span>
+                <button onclick="removeItem('${slot.key}', ${item.uid})" class="text-rose-400 hover:text-rose-300 text-xs px-1.5">✕</button>
+              </div>
+            </div>
+          `;
+        }).join('');
+
+        totCal += sCal; totPro += sPro; totCarb += sCarb; totFat += sFat;
+
+        return `
+          <section class="card p-4">
+            <div class="flex items-center justify-between mb-3">
+              <div>
+                <h3 class="text-sm font-bold text-white">${slot.title}</h3>
+                <p class="text-[11px] text-slate-400">${Math.round(sCal)} kcal • ${Math.round(sPro)}g P • ${Math.round(sCarb)}g C • ${Math.round(sFat)}g F</p>
+              </div>
+              <button onclick="document.getElementById('active-slot').value='${slot.key}'; document.getElementById('food-search').focus();" class="text-xs bg-slate-800 hover:bg-slate-700 text-emerald-400 px-2.5 py-1 rounded-lg border border-slate-700">+ Add Food Here</button>
+            </div>
+            <div class="space-y-2">
+              ${rows || '<div class="text-xs text-slate-500 italic py-2">No foods logged yet.</div>'}
+            </div>
+          </section>
+        `;
+      }).join('');
+
+      document.getElementById('meals-container').innerHTML = mealsHtml;
+
+      document.getElementById('tot-cal').textContent = Math.round(totCal);
+      document.getElementById('lbl-target-cal').textContent = state.targets.cal;
+      document.getElementById('tot-pro').textContent = Math.round(totPro);
+      document.getElementById('lbl-target-pro').textContent = state.targets.pro;
+      document.getElementById('tot-carb').textContent = Math.round(totCarb);
+      document.getElementById('lbl-target-carb').textContent = state.targets.carb;
+      document.getElementById('tot-fat').textContent = Math.round(totFat);
+      document.getElementById('lbl-target-fat').textContent = state.targets.fat;
+
+      const remCal = state.targets.cal - Math.round(totCal);
+      const badge = document.getElementById('rem-cal-badge');
+      badge.textContent = remCal >= 0 ? `${remCal} kcal left` : `${Math.abs(remCal)} kcal over`;
+      badge.className = remCal >= 0
+        ? 'inline-block px-3 py-1 rounded-full text-xs font-semibold bg-emerald-500/15 text-emerald-300 border border-emerald-500/30'
+        : 'inline-block px-3 py-1 rounded-full text-xs font-semibold bg-rose-500/15 text-rose-300 border border-rose-500/30';
+
+      document.getElementById('rem-pro').textContent = `(${Math.max(0, Math.round(state.targets.pro - totPro))}g left)`;
+      document.getElementById('rem-carb').textContent = `(${Math.max(0, Math.round(state.targets.carb - totCarb))}g left)`;
+      document.getElementById('rem-fat').textContent = `(${Math.max(0, Math.round(state.targets.fat - totFat))}g left)`;
+
+      document.getElementById('bar-cal').style.width = Math.min(100, (totCal / (state.targets.cal || 1)) * 100) + '%';
+      document.getElementById('bar-pro').style.width = Math.min(100, (totPro / (state.targets.pro || 1)) * 100) + '%';
+      document.getElementById('bar-carb').style.width = Math.min(100, (totCarb / (state.targets.carb || 1)) * 100) + '%';
+      document.getElementById('bar-fat').style.width = Math.min(100, (totFat / (state.targets.fat || 1)) * 100) + '%';
+
+      renderFoodLibrary();
+    }
+
+    renderAll();
+  </script>
+</body>
+</html>
